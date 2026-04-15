@@ -210,7 +210,7 @@ class Solvium:
                                 "Waiting for completion..."
                             )
                     case TaskStatus.COMPLETED:
-                        result: Dict = response.get("result", {})
+                        result: Dict = response.get("result") or {}
                         solution = result.get("solution", "NO_SOLUTION")
                         if self.verbose:
                             logger.info(
@@ -218,8 +218,7 @@ class Solvium:
                             )
                         return solution
                     case TaskStatus.REJECTED:
-                        result: Dict = response.get("result", {})
-                        error: str = result.get("error", "NO_ERROR_RETURNED")
+                        error: str = response.get("error") or "NO_ERROR_RETURNED"
                         logger.error(
                             f"Task `{task_id}` was not solved! An error was returned — {error}"
                         )

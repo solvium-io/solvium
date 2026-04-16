@@ -17,6 +17,20 @@ class TaskStatus(StrEnum):
     NO_STATUS = "no_status"
 
 
+class TaskRejected(Exception):
+    """Raised when the Solvium service rejects a task.
+
+    The server-side error code (e.g. ``PROXY_ERROR``, ``BOT_DETECTED_BY_CLOUDFLARE``,
+    ``IP_BLOCKED_BY_CLOUDFLARE``) is available as ``error_code``, and the
+    rejected task id as ``task_id``.
+    """
+
+    def __init__(self, task_id: str, error_code: str) -> None:
+        self.task_id = task_id
+        self.error_code = error_code
+        super().__init__(f"Task {task_id} rejected: {error_code}")
+
+
 class Solvium:
     """
     Solvium captcha solving client.
@@ -76,7 +90,7 @@ class Solvium:
         try:
             response: httpx.Response = await api_call_coro
             response_json: Dict = response.json()
-        except (httpx.ConnectError, httpx.NetworkError):
+        except httpx.ConnectError, httpx.NetworkError:
             logger.error(
                 "Can't connect to solvium.io... "
                 "Check your Internet connection or try using proxy for API calls."
@@ -129,7 +143,12 @@ class Solvium:
         )
 
     async def _create_recaptcha_v3_task(
-        self, sitekey: str, pageurl: str, action: str, enterprise: bool, proxy: Optional[str]
+        self,
+        sitekey: str,
+        pageurl: str,
+        action: str,
+        enterprise: bool,
+        proxy: Optional[str],
     ):
         """Create a reCAPTCHA v3 solving task."""
         params = {"url": pageurl, "sitekey": sitekey, "action": action}
@@ -143,9 +162,14 @@ class Solvium:
                 params=params,
             )
         )
-        
+
     async def _create_recaptcha_v2_task(
-        self, sitekey: str, pageurl: str, action: str, enterprise: bool, proxy: Optional[str]
+        self,
+        sitekey: str,
+        pageurl: str,
+        action: str,
+        enterprise: bool,
+        proxy: Optional[str],
     ):
         """Create a reCAPTCHA v2 solving task."""
         params = {"url": pageurl, "sitekey": sitekey, "action": action}
@@ -214,7 +238,7 @@ class Solvium:
                         solution = result.get("solution", "NO_SOLUTION")
                         if self.verbose:
                             logger.info(
-                                f"Task `{task_id}` was successfully solved and solution `{solution[:min(len(solution), 12)]}...` returned!"
+                                f"Task `{task_id}` was successfully solved and solution `{solution[: min(len(solution), 12)]}...` returned!"
                             )
                         return solution
                     case TaskStatus.REJECTED:
@@ -222,7 +246,7 @@ class Solvium:
                         logger.error(
                             f"Task `{task_id}` was not solved! An error was returned — {error}"
                         )
-                        return None
+                        raise TaskRejected(task_id, error)
             await asyncio.sleep(random.randint(1, 3))
 
     async def turnstile(self, sitekey: str, pageurl: str) -> Optional[str]:
@@ -356,7 +380,12 @@ class Solvium:
         return asyncio.run(self.vercel(challenge_token=challenge_token))
 
     async def recaptcha_v3(
-        self, sitekey: str, pageurl: str, action: str, enterprise: bool = False, proxy: Optional[str] = None
+        self,
+        sitekey: str,
+        pageurl: str,
+        action: str,
+        enterprise: bool = False,
+        proxy: Optional[str] = None,
     ) -> Optional[str]:
         """
         Solve a reCAPTCHA v3 asynchronously.
@@ -371,7 +400,9 @@ class Solvium:
         Returns:
             Optional[str]: The reCAPTCHA solution token if successful, None otherwise.
         """
-        task_id = await self._create_recaptcha_v3_task(sitekey, pageurl, action, enterprise, proxy)
+        task_id = await self._create_recaptcha_v3_task(
+            sitekey, pageurl, action, enterprise, proxy
+        )
         if not task_id:
             return None
         return await asyncio.wait_for(
@@ -379,7 +410,12 @@ class Solvium:
         )
 
     def recaptcha_v3_sync(
-        self, sitekey: str, pageurl: str, action: str, enterprise: bool = False, proxy: Optional[str] = None
+        self,
+        sitekey: str,
+        pageurl: str,
+        action: str,
+        enterprise: bool = False,
+        proxy: Optional[str] = None,
     ) -> Optional[str]:
         """
         Solve a reCAPTCHA v3 synchronously.
@@ -395,11 +431,22 @@ class Solvium:
             Optional[str]: The reCAPTCHA solution token if successful, None otherwise.
         """
         return asyncio.run(
-            self.recaptcha_v3(sitekey=sitekey, pageurl=pageurl, action=action, enterprise=enterprise, proxy=proxy)
+            self.recaptcha_v3(
+                sitekey=sitekey,
+                pageurl=pageurl,
+                action=action,
+                enterprise=enterprise,
+                proxy=proxy,
+            )
         )
-        
+
     async def recaptcha_v2(
-        self, sitekey: str, pageurl: str, action: str, enterprise: bool = False, proxy: Optional[str] = None
+        self,
+        sitekey: str,
+        pageurl: str,
+        action: str,
+        enterprise: bool = False,
+        proxy: Optional[str] = None,
     ) -> Optional[str]:
         """
         Solve a reCAPTCHA v2 asynchronously.
@@ -414,7 +461,9 @@ class Solvium:
         Returns:
             Optional[str]: The reCAPTCHA solution token if successful, None otherwise.
         """
-        task_id = await self._create_recaptcha_v2_task(sitekey, pageurl, action, enterprise, proxy)
+        task_id = await self._create_recaptcha_v2_task(
+            sitekey, pageurl, action, enterprise, proxy
+        )
         if not task_id:
             return None
         return await asyncio.wait_for(
@@ -422,7 +471,12 @@ class Solvium:
         )
 
     def recaptcha_v2_sync(
-        self, sitekey: str, pageurl: str, action: str, enterprise: bool = False, proxy: Optional[str] = None
+        self,
+        sitekey: str,
+        pageurl: str,
+        action: str,
+        enterprise: bool = False,
+        proxy: Optional[str] = None,
     ) -> Optional[str]:
         """
         Solve a reCAPTCHA v2 synchronously.
@@ -438,5 +492,11 @@ class Solvium:
             Optional[str]: The reCAPTCHA solution token if successful, None otherwise.
         """
         return asyncio.run(
-            self.recaptcha_v2(sitekey=sitekey, pageurl=pageurl, action=action, enterprise=enterprise, proxy=proxy)
+            self.recaptcha_v2(
+                sitekey=sitekey,
+                pageurl=pageurl,
+                action=action,
+                enterprise=enterprise,
+                proxy=proxy,
+            )
         )

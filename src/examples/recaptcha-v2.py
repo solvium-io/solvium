@@ -1,4 +1,3 @@
-import base64
 import os
 import httpx
 from solvium import Solvium
@@ -10,9 +9,9 @@ WEBSITE_WITH_RECAPTCHA_V2 = "https://clusters.xyz/community/campnetwork/register
 RECAPTCHA_SITE_KEY = "6Lc4jRkrAAAAAAr295LcTFPkvbxbMxcBS3gfBRXu"
 RECAPTCHA_ACTION = "SIGNUP"
 CLUSTERS_AUTHORIZATION_TOKEN = os.environ.get("CLUSTERS_AUTHORIZATION_TOKEN")
-assert (
-    CLUSTERS_AUTHORIZATION_TOKEN is not None
-), "Please set the CLUSTERS_AUTHORIZATION_TOKEN environment variable."
+assert CLUSTERS_AUTHORIZATION_TOKEN is not None, (
+    "Please set the CLUSTERS_AUTHORIZATION_TOKEN environment variable."
+)
 API_KEY = os.environ.get("API_KEY")  # Can be found at https://t.me/solvium_crypto_bot
 assert API_KEY is not None, "Please set the API_KEY environment variable."
 
